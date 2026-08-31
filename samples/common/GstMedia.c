@@ -96,9 +96,15 @@ GstFlowReturn on_new_sample(GstElement* sink, gpointer data, UINT64 trackid)
                     }
                 }
                 pRtcRtpTransceiver = pSampleStreamingSession->pVideoRtcRtpTransceiver;
-                frame.presentationTs = pSampleStreamingSession->videoTimestamp;
+                if (GST_CLOCK_TIME_IS_VALID(buf_pts)) {
+                    // use the real capture-time-derived timestamp instead of assuming a fixed source fps,
+                    // otherwise sources slower/faster than DEFAULT_FPS_VALUE get an incorrect presentation timeline
+                    frame.presentationTs = (UINT64) buf_pts / DEFAULT_TIME_UNIT_IN_NANOS;
+                } else {
+                    frame.presentationTs = pSampleStreamingSession->videoTimestamp;
+                    pSampleStreamingSession->videoTimestamp += SAMPLE_VIDEO_FRAME_DURATION;
+                }
                 frame.decodingTs = frame.presentationTs;
-                pSampleStreamingSession->videoTimestamp += SAMPLE_VIDEO_FRAME_DURATION; // assume video fps is 25
             }
             status = writeFrame(pRtcRtpTransceiver, &frame);
             if (status != STATUS_SRTP_NOT_READY_YET && status != STATUS_SUCCESS) {
@@ -216,13 +222,23 @@ PVOID sendGstreamerAudioVideo(PVOID args)
                 }
                 case RTSP_SOURCE: {
                     UINT16 stringOutcome =
-                        SNPRINTF(rtspPipeLineBuffer, RTSP_PIPELINE_MAX_CHAR_COUNT,
-                                 "uridecodebin uri=%s ! "
-                                 "videoconvert ! "
-                                 "x264enc name=sampleVideoEncoder bframes=0 speed-preset=veryfast bitrate=512 byte-stream=TRUE tune=zerolatency ! "
-                                 "video/x-h264,stream-format=byte-stream,alignment=au,profile=baseline ! queue ! "
-                                 "appsink sync=TRUE emit-signals=TRUE name=appsink-video ",
-                                 pSampleConfiguration->rtspUri);
+                    SNPRINTF(rtspPipeLineBuffer, RTSP_PIPELINE_MAX_CHAR_COUNT,
+         "rtspsrc location=%s protocols=tcp latency=200 "
+         "drop-on-latency=TRUE name=src ! "
+         "application/x-rtp,media=video,encoding-name=H264 ! "
+         "rtph264depay ! "
+         "h264parse config-interval=-1 ! "
+         "video/x-h264,stream-format=byte-stream,alignment=au ! "
+         "queue max-size-buffers=0 max-size-time=0 max-size-bytes=0 ! "
+         "appsink sync=FALSE emit-signals=TRUE name=appsink-video ",
+         pSampleConfiguration->rtspUri);
+                        // SNPRINTF(rtspPipeLineBuffer, RTSP_PIPELINE_MAX_CHAR_COUNT,
+                        //          "uridecodebin uri=%s ! "
+                        //          "videoconvert ! "
+                        //          "x264enc name=sampleVideoEncoder bframes=0 speed-preset=veryfast bitrate=512 byte-stream=TRUE tune=zerolatency ! "
+                        //          "video/x-h264,stream-format=byte-stream,alignment=au,profile=baseline ! queue ! "
+                        //          "appsink sync=TRUE emit-signals=TRUE name=appsink-video ",
+                        //          pSampleConfiguration->rtspUri);
 
                     if (stringOutcome > RTSP_PIPELINE_MAX_CHAR_COUNT) {
                         DLOGE("[KVS GStreamer Master] ERROR: rtsp uri entered exceeds maximum allowed length set by RTSP_PIPELINE_MAX_CHAR_COUNT");
@@ -277,15 +293,25 @@ PVOID sendGstreamerAudioVideo(PVOID args)
                 }
                 case RTSP_SOURCE: {
                     UINT16 stringOutcome =
+                        // SNPRINTF(rtspPipeLineBuffer, RTSP_PIPELINE_MAX_CHAR_COUNT,
+                        //          "uridecodebin uri=%s name=src ! videoconvert ! "
+                        //          "x264enc name=sampleVideoEncoder bframes=0 speed-preset=veryfast bitrate=512 byte-stream=TRUE tune=zerolatency ! "
+                        //          "video/x-h264,stream-format=byte-stream,alignment=au,profile=baseline ! queue ! "
+                        //          "appsink sync=TRUE emit-signals=TRUE name=appsink-video "
+                        //          "src. ! audioconvert ! "
+                        //          "audioresample ! opusenc name=sampleAudioEncoder ! audio/x-opus,rate=48000,channels=2 ! queue ! "
+                        //          "appsink sync=TRUE emit-signals=TRUE name=appsink-audio",
+                        //          pSampleConfiguration->rtspUri);
                         SNPRINTF(rtspPipeLineBuffer, RTSP_PIPELINE_MAX_CHAR_COUNT,
-                                 "uridecodebin uri=%s name=src ! videoconvert ! "
-                                 "x264enc name=sampleVideoEncoder bframes=0 speed-preset=veryfast bitrate=512 byte-stream=TRUE tune=zerolatency ! "
-                                 "video/x-h264,stream-format=byte-stream,alignment=au,profile=baseline ! queue ! "
-                                 "appsink sync=TRUE emit-signals=TRUE name=appsink-video "
-                                 "src. ! audioconvert ! "
-                                 "audioresample ! opusenc name=sampleAudioEncoder ! audio/x-opus,rate=48000,channels=2 ! queue ! "
-                                 "appsink sync=TRUE emit-signals=TRUE name=appsink-audio",
-                                 pSampleConfiguration->rtspUri);
+         "rtspsrc location=%s protocols=tcp latency=200 "
+         "drop-on-latency=TRUE name=src ! "
+         "application/x-rtp,media=video,encoding-name=H264 ! "
+         "rtph264depay ! "
+         "h264parse config-interval=-1 ! "
+         "video/x-h264,stream-format=byte-stream,alignment=au ! "
+         "queue max-size-buffers=0 max-size-time=0 max-size-bytes=0 ! "
+         "appsink sync=FALSE emit-signals=TRUE name=appsink-video ",
+         pSampleConfiguration->rtspUri);
 
                     if (stringOutcome > RTSP_PIPELINE_MAX_CHAR_COUNT) {
                         DLOGE("[KVS GStreamer Master] ERROR: rtsp uri entered exceeds maximum allowed length set by RTSP_PIPELINE_MAX_CHAR_COUNT");
