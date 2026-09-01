@@ -1,0 +1,29 @@
+# Cross build environment for the Orange Pi Zero 3 (Allwinner H618, aarch64/Cortex-A53).
+# Build natively as linux/arm64 (no QEMU needed on an Apple Silicon Mac; QEMU kicks in
+# automatically on an Intel host via Docker Desktop's binfmt integration).
+#
+# Base matches common Armbian/Debian Bookworm images used on this board.
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    git \
+    m4 \
+    pkg-config \
+    ca-certificates \
+    libssl-dev \
+    libcurl4-openssl-dev \
+    liblog4cplus-dev \
+    libsrtp2-dev \
+    libusrsctp-dev \
+    libgstreamer1.0-dev \
+    libgstreamer-plugins-base1.0-dev \
+    gstreamer1.0-plugins-base-apps \
+    gstreamer1.0-plugins-bad \
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-ugly \
+    gstreamer1.0-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace

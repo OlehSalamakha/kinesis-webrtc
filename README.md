@@ -163,6 +163,8 @@ These would be applicable if the SDK is being linked with system dependencies in
 
 If you wish to cross-compile `CC` and `CXX` are respected when building the library and all its dependencies. You will also need to set `BUILD_OPENSSL_PLATFORM`, `BUILD_LIBSRTP_HOST_PLATFORM` and `BUILD_LIBSRTP_DESTINATION_PLATFORM`. See our codecov.io for an example of this. Every commit is cross compiled to ensure that it continues to work.
 
+If setting up a native cross-toolchain isn't appealing, building inside a Docker container for the target platform is a reliable alternative — see [docs/DOCKER_BUILD.md](docs/DOCKER_BUILD.md).
+
 #### Static Builds
 
 If `-DBUILD_STATIC_LIBS=TRUE` then all dependencies and KVS WebRTC libraries will be built as static libraries.
@@ -881,6 +883,7 @@ See the [Status code reference](https://github.com/awslabs/amazon-kinesis-video-
 Additional guides:
 - [TWCC (Transport-Wide Congestion Control)](docs/TWCC.md) — bandwidth estimation, bitrate adaptation, and troubleshooting
 - [Troubleshooting H.265 sample frames](docs/TROUBLESHOOTING_H265_FRAMES.md) — inspecting NAL units, diagnosing freeze-after-first-frame, regenerating frames
+- [Building with Docker](docs/DOCKER_BUILD.md) — cross-building for another target platform (e.g. an arm64 SBC) inside a Docker container
 
 Refer to [related](#related) for more about WebRTC and KVS.
 
